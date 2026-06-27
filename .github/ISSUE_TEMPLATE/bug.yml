@@ -1,0 +1,42 @@
+name: Bug report
+description: Something's broken in `dig` itself, or in a report it produced.
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: dig version
+      description: Output of `dig --version` (or the commit SHA you built from).
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        $ dig ../some-repo --out report.html
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: |
+        OS: macOS 15.4
+        Go: 1.22.5
+        git: 2.45.0
+    validations:
+      required: true

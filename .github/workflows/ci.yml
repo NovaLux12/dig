@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build
+        run: go build -v -o dig .
+
+      - name: Smoke test — dig against dig itself
+        run: |
+          ./dig . --out dig-self-report.html
+          test -s dig-self-report.html
+          head -c 200 dig-self-report.html | grep -qi '<!doctype html>'
+
+      - name: Smoke test — dig against a tiny synthetic repo
+        run: |
+          set -e
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          git init -q
+          git config user.email t@t && git config user.name t
+          printf 'a\nb\nc\n' > file.txt
+          git add . && git commit -q -m 'init'
+          printf 'a\nb\nc\nd\n' > file.txt
+          git commit -aq -m 'add d'
+          "$GITHUB_WORKSPACE/dig" . --out r.html
+          test -s r.html
+          grep -q '<section' r.html
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: gofmt
+        run: |
+          test -z "$(gofmt -l .)"
