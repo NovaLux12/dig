@@ -12,8 +12,13 @@ Note: flags must come before the positional `<repo-path>` argument (standard
 Go flag behaviour).
 
 One HTML file. Zero network. Zero CDN. Zero JS framework. The report works
-offline, can be emailed as an attachment, and renders the same in any modern
-browser.
+offline, can be emailed as an attachment, and renders the same in any modern browser.
+
+![dig report on cli/cli — 11,470 commits, 711 contributors, 6.8 years of history](./docs/screenshot.png)
+
+*Above: `dig` rendered against [cli/cli](https://github.com/cli/cli) — the
+official GitHub command-line tool. 11,470 commits, 711 contributors, 81
+months of activity, bus factor 8.*
 
 ## What you get
 
@@ -50,6 +55,9 @@ cd dig && go build -o dig .
 ```
 
 Requires Go 1.22+ and a `git` binary on `$PATH`.
+
+## Usage
+
 ```sh
 dig <repo-path>                             # writes dig-report.html in CWD
 dig --out report.html <repo-path>           # custom output path
