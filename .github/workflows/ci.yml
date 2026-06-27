@@ -27,7 +27,7 @@ jobs:
 
       - name: Smoke test — dig against dig itself
         run: |
-          ./dig . --out dig-self-report.html
+          ./dig --out dig-self-report.html .
           test -s dig-self-report.html
           head -c 200 dig-self-report.html | grep -qi '<!doctype html>'
 
@@ -42,7 +42,7 @@ jobs:
           git add . && git commit -q -m 'init'
           printf 'a\nb\nc\nd\n' > file.txt
           git commit -aq -m 'add d'
-          "$GITHUB_WORKSPACE/dig" . --out r.html
+          "$GITHUB_WORKSPACE/dig" --out r.html .
           test -s r.html
           grep -q '<section' r.html
 
