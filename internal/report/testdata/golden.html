@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dig — dig report</title>
+<style>
+:root {
+  --accent: #7aa2f7;
+  --accent-hover: color-mix(in srgb, var(--accent) 70%, white 30%);
+  --bg: #0e1116;
+  --surface: #181b22;
+  --fg: #cdd6f4;
+  --muted: #6c7086;
+  --border: #2a2f3a;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --fg: #1f2328;
+    --muted: #6e7781;
+    --border: #d0d7de;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+body {
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  padding: 32px 24px 64px;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.container { max-width: 960px; margin: 0 auto; }
+header.page {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.subtitle { color: var(--muted); font-size: 14px; }
+.subtitle code { color: var(--fg); }
+
+section.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+section.card h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.metric {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.metric .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.metric .value { font-size: 20px; font-weight: 600; margin-top: 4px; }
+.metric .value.accent { color: var(--accent); }
+
+.busfactor-callout {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+}
+
+.contrib-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr 60px;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+.contrib-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contrib-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.contrib-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.contrib-count { text-align: right; font: 12px ui-monospace, monospace; color: var(--muted); }
+
+table.hot {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.hot th, table.hot td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+table.hot th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+table.hot td.num, table.hot th.num { text-align: right; font: 12px ui-monospace, monospace; }
+table.hot td.path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+table.hot tr:last-child td { border-bottom: 0; }
+
+.lang-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 200px;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 0;
+}
+.lang-ext { font: 12px ui-monospace, monospace; color: var(--muted); }
+.lang-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.lang-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.lang-stats { font: 11px ui-monospace, monospace; color: var(--muted); text-align: right; }
+
+.commit-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--bg);
+}
+.commit-card .hash {
+  font: 12px ui-monospace, monospace;
+  color: var(--accent);
+  display: inline-block;
+}
+.commit-card .subject { font-weight: 600; margin: 4px 0; }
+.commit-card .meta { font-size: 12px; color: var(--muted); }
+.commit-card .files {
+  margin-top: 8px;
+  font: 11px ui-monospace, monospace;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.readme {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+footer.page {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+footer.page a { color: var(--accent); text-decoration: none; }
+footer.page a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header class="page">
+  <h1>dig</h1>
+  <div class="subtitle mono">/tmp/dig</div>
+</header>
+
+<section class="card">
+  <h2>Overview</h2>
+  <div class="metrics">
+    <div class="metric"><div class="label">Commits</div><div class="value">3</div></div>
+    <div class="metric"><div class="label">Contributors</div><div class="value">2</div></div>
+    <div class="metric"><div class="label">Age</div><div class="value">56 days</div></div>
+    <div class="metric"><div class="label">Files at HEAD</div><div class="value">3</div></div>
+    <div class="metric"><div class="label">First commit</div><div class="value mono">2026-05-01</div></div>
+    <div class="metric"><div class="label">Last commit</div><div class="value mono">2026-06-27</div></div>
+  </div>
+  <div class="busfactor-callout">
+    <strong>Bus factor:</strong> 1 contributor could disappear before 50% of commits become unmaintained.
+  </div>
+</section>
+
+<section class="card">
+  <h2>Timeline</h2>
+  <div><svg viewBox="0 0 56 104" width="56" height="104" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Commits per month"><style>.tl-bar{fill:var(--accent)}.tl-bar:hover{fill:var(--accent-hover)}.tl-axis{stroke:var(--border)}.tl-label{fill:var(--muted);font:10px ui-monospace,monospace}.tl-zero{fill:var(--border);font:10px ui-monospace,monospace}</style><line class="tl-axis" x1="28" y1="88" x2="48" y2="88"/><text class="tl-label" x="24" y="16" text-anchor="end">1</text><text class="tl-label" x="24" y="90" text-anchor="end">0</text><rect x="28" y="8" width="8" height="80" class="tl-bar" rx="2"><title>2026-05 — 1 commits</title></rect><rect x="38" y="8" width="8" height="80" class="tl-bar" rx="2"><title>2026-06 — 1 commits</title></rect><text class="tl-label" x="32" y="100" text-anchor="start">2026-05</text><text class="tl-label" x="32" y="100" text-anchor="middle">2026-05</text><text class="tl-label" x="42" y="100" text-anchor="end">2026-06</text></svg></div>
+  <div class="subtitle" style="margin-top:8px">
+    Peak: <span class="mono">2026-05</span> with 1 commits ·
+    2 months across 2 commits
+  </div>
+</section>
+
+<section class="card">
+  <h2>Contributors</h2>
+  <div class="contrib-row"><div class="contrib-name">alice</div><div class="contrib-bar"><div class="contrib-bar-fill" style="width:100.00%"></div></div><div class="contrib-count">2</div></div><div class="contrib-row"><div class="contrib-name">bob</div><div class="contrib-bar"><div class="contrib-bar-fill" style="width:50.00%"></div></div><div class="contrib-count">1</div></div>
+</section>
+
+
+<section class="card">
+  <h2>Hot files</h2>
+  <table class="hot">
+    <thead>
+      <tr><th>Path</th><th>Primary author</th><th class="num">Touches</th><th class="num">Last modified</th></tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td class="path">main.go</td>
+        <td>alice</td>
+        <td class="num">3</td>
+        <td class="num">2026-06-27</td>
+      </tr>
+      
+      <tr>
+        <td class="path">internal/git/log.go</td>
+        <td>bob</td>
+        <td class="num">1</td>
+        <td class="num">2026-06-27</td>
+      </tr>
+      
+      <tr>
+        <td class="path">README.md</td>
+        <td>alice</td>
+        <td class="num">1</td>
+        <td class="num">2026-05-01</td>
+      </tr>
+      
+    </tbody>
+  </table>
+</section>
+
+
+
+<section class="card">
+  <h2>Languages</h2>
+  <div class="lang-row"><div class="lang-ext">go</div><div class="lang-bar"><div class="lang-bar-fill" style="width:100.00%"></div></div><div class="lang-stats">2 files · 100 lines</div></div><div class="lang-row"><div class="lang-ext">md</div><div class="lang-bar"><div class="lang-bar-fill" style="width:10.00%"></div></div><div class="lang-stats">1 files · 10 lines</div></div>
+</section>
+
+
+<section class="card">
+  <h2>First commit</h2>
+  <div class="commit-card">
+    <div class="hash">1111111</div>
+    <div class="subject">init</div>
+    <div class="meta">alice &lt;alice@example.com&gt; · 2026-05-01 12:00 UTC</div>
+    
+    <div class="files">
+      main.go
+      README.md
+      
+    </div>
+    
+  </div>
+</section>
+
+<section class="card">
+  <h2>Latest commit</h2>
+  <div class="commit-card">
+    <div class="hash">2222222</div>
+    <div class="subject">wire up dig</div>
+    <div class="meta">bob &lt;bob@example.com&gt; · 2026-06-27 11:00 UTC</div>
+    
+    <div class="files">
+      main.go
+      internal/git/log.go
+      
+    </div>
+    
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>README excerpt</h2>
+  <div class="readme"># dig
+
+A code-archaeology report generator.
+</div>
+</section>
+
+
+<footer class="page">
+  <NORMALISED-GENERATED-AT>
+</footer>
+
+</div>
+</body>
+</html>

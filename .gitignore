@@ -1,0 +1,9 @@
+# dig — generated artefacts
+/dig
+/dig-report.html
+/dist/
+
+# Go
+*.test
+*.out
+coverage.html
