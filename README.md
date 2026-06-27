@@ -40,6 +40,9 @@ A single `report.html` containing:
 - **Latest commit** — the same, for "where we are now."
 - **README excerpt** — the first 80 non-empty lines of the project's README
   if one exists.
+- **Changes since &lt;base&gt;** (only when `--base` is set) — commit diff,
+  new/departed contributors, hot-file shifts, language line deltas, and the
+  bus-factor shift between the base ref and HEAD.
 
 ## Install
 
@@ -63,11 +66,26 @@ dig <repo-path>                             # writes dig-report.html in CWD
 dig --out report.html <repo-path>           # custom output path
 dig --accent #ff5577 <repo-path>            # custom accent colour
 dig --since 12mo <repo-path>                # restrict analysis window
+dig --base v1.0 <repo-path>                 # compare against a ref; emit a delta report
 dig --help
 ```
 
 `dig` is read-only. It never modifies, stages, or commits anything in the
 target repo.
+
+### Compare mode
+
+`--base <ref>` walks the commit log for an arbitrary ref (branch, tag, or
+SHA prefix) and emits the delta against the current state. The resulting
+HTML includes a "Changes since &lt;ref&gt;" section listing the commits
+added and removed, new and departed contributors, hot files only in one
+side or the other, language line deltas, and the bus-factor shift:
+
+```sh
+dig --base v1.0 ../my-repo          # changes since the v1.0 tag
+dig --base main ../feature-branch   # changes between branches
+dig --base 7a4e2c1 ../repo          # changes since a specific SHA
+```
 
 Exit codes: `0` success, `1` not a git repo, `2` git not installed, `3` other I/O.
 

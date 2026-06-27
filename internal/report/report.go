@@ -15,14 +15,17 @@ import (
 	"github.com/NovaLux12/dig/internal/git"
 )
 
-// Render returns the HTML document as bytes.
-func Render(r *analyze.Report) ([]byte, error) {
+// Render returns the HTML document as bytes. If d is non-nil, the
+// rendered document includes a "Changes since <base ref>" section with
+// the commit/contributor/file/language delta. When d is nil, the report
+// is a plain single-ref dig output.
+func Render(r *analyze.Report, d *analyze.Delta) ([]byte, error) {
 	tmpl, err := template.New("report").Funcs(funcMap).Parse(reportHTML)
 	if err != nil {
 		return nil, fmt.Errorf("parse template: %w", err)
 	}
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, viewModel(r)); err != nil {
+	if err := tmpl.Execute(&buf, viewModel(r, d)); err != nil {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
 	return buf.Bytes(), nil
@@ -30,7 +33,7 @@ func Render(r *analyze.Report) ([]byte, error) {
 
 // viewModel pre-renders the strings the template needs so the template
 // itself stays declarative.
-func viewModel(r *analyze.Report) map[string]any {
+func viewModel(r *analyze.Report, d *analyze.Delta) map[string]any {
 	repoName := r.RepoName
 	if repoName == "" {
 		repoName = "untitled"
@@ -54,7 +57,7 @@ func viewModel(r *analyze.Report) map[string]any {
 		bfMsg = "1 contributor could disappear before 50% of commits become unmaintained"
 	}
 
-	return map[string]any{
+	vm := map[string]any{
 		"RepoName":         repoName,
 		"RepoPath":         r.RepoPath,
 		"Accent":           r.Accent,
@@ -81,7 +84,27 @@ func viewModel(r *analyze.Report) map[string]any {
 		"PeakLabel":        peakLabel(r),
 		"PeakCommits":      peakCommits(r),
 		"TimelineTotal":    total,
+		"Delta":            d,
+		"RecentAdded":      recentCommits(d, 5),
 	}
+	return vm
+}
+
+// recentCommits returns up to n entries of d.CommitsAdded (most recent
+// first). Returns nil if d is nil or there are no added commits.
+func recentCommits(d *analyze.Delta, n int) []git.Commit {
+	if d == nil || n <= 0 || len(d.CommitsAdded) == 0 {
+		return nil
+	}
+	if len(d.CommitsAdded) <= n {
+		// Show all of them when the total is small enough.
+		out := make([]git.Commit, len(d.CommitsAdded))
+		copy(out, d.CommitsAdded)
+		return out
+	}
+	out := make([]git.Commit, n)
+	copy(out, d.CommitsAdded[:n])
+	return out
 }
 
 func peakLabel(r *analyze.Report) string {

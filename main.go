@@ -52,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		accent   string
 		sinceStr string
 		allRefs  bool
+		baseRef  string
 		showVer  bool
 		showHelp bool
 	)
@@ -59,6 +60,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&accent, "accent", "#7aa2f7", "accent colour (hex)")
 	fs.StringVar(&sinceStr, "since", "", "restrict analysis to commits after this time (e.g. 12mo, 2024-01-01)")
 	fs.BoolVar(&allRefs, "all", false, "walk all refs (branches and tags) instead of just HEAD")
+	fs.StringVar(&baseRef, "base", "", "compare against this ref (branch, tag, or SHA prefix). Emits a delta report. Empty = no compare.")
 	fs.BoolVar(&showVer, "version", false, "print version and exit")
 	fs.BoolVar(&showHelp, "help", false, "show usage")
 
@@ -67,6 +69,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "Usage:\n  dig <repo-path> [flags]\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes:\n  %d success\n  %d not a git repo\n  %d git not installed\n  %d I/O error\n", exitOK, exitNotARepo, exitGitNotInstalled, exitIO)
+		fmt.Fprintf(stderr, "\nExamples:\n  dig ../my-repo\n  dig --base v1.0 --out since-v1.html ../my-repo\n  dig --since 12mo ../my-repo\n")
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -154,7 +157,44 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitIO
 	}
 
-	html, err := report.Render(r)
+	var delta *analyze.Delta
+	if baseRef != "" {
+		baseCommits, err := git.Commits(abs, git.CommitOpts{
+			Since:   since,
+			AllRefs: false,
+			Ref:     baseRef,
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "dig: walk base ref %q: %v\n", baseRef, err)
+			return exitIO
+		}
+		if len(baseCommits) == 0 {
+			fmt.Fprintf(stderr, "dig: base ref %q has no commits (does it exist?)\n", baseRef)
+			return exitNotARepo
+		}
+		baseContributors := git.AggregateContributors(baseCommits)
+		baseHotFiles := git.AggregateHotFiles(baseCommits, 25)
+		baseFilesAtHEAD, err := git.FilesAtHEAD(abs)
+		if err != nil {
+			fmt.Fprintf(stderr, "dig: list files at base: %v\n", err)
+			return exitIO
+		}
+		baseLinesByFile, err := git.LinesByFile(abs)
+		if err != nil {
+			fmt.Fprintf(stderr, "dig: line counts at base: %v (continuing with partial data)\n", err)
+			baseLinesByFile = map[string]int64{}
+		}
+		baseLanguages := git.AggregateLanguages(baseFilesAtHEAD, baseLinesByFile, 15)
+		baseReport, err := analyze.Build(abs, repoName, baseCommits, baseContributors,
+			baseHotFiles, baseLanguages, len(baseFilesAtHEAD), "", accent)
+		if err != nil {
+			fmt.Fprintf(stderr, "dig: analyse base: %v\n", err)
+			return exitIO
+		}
+		delta = analyze.Compare(baseReport, r, baseRef, "HEAD")
+	}
+
+	html, err := report.Render(r, delta)
 	if err != nil {
 		fmt.Fprintf(stderr, "dig: render: %v\n", err)
 		return exitIO

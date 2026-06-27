@@ -55,6 +55,10 @@ type CommitOpts struct {
 	MaxCount int
 	// Path, if non-empty, restricts commits to those touching this path.
 	Path string
+	// Ref, if non-empty, walks this specific ref (branch, tag, or SHA
+	// prefix). Defaults to HEAD when AllRefs is false and Ref is empty.
+	// Ignored when AllRefs is true.
+	Ref string
 }
 
 // Contributor aggregates per-author commit counts and times.

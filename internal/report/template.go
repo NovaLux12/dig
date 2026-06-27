@@ -181,6 +181,27 @@ footer.page {
 }
 footer.page a { color: var(--accent); text-decoration: none; }
 footer.page a:hover { text-decoration: underline; }
+
+.delta-section-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.path-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.path-chip {
+  font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--fg);
+}
 </style>
 </head>
 <body>
@@ -219,6 +240,92 @@ footer.page a:hover { text-decoration: underline; }
   <h2>Contributors</h2>
   {{.ContribBars}}
 </section>
+
+{{if .Delta}}
+<section class="card">
+  <h2>Changes since {{.Delta.BaseRef}}</h2>
+  <div class="metrics">
+    <div class="metric"><div class="label">Commits added</div><div class="value accent">{{comma (len .Delta.CommitsAdded)}}</div></div>
+    <div class="metric"><div class="label">Commits removed</div><div class="value">{{comma (len .Delta.CommitsRemoved)}}</div></div>
+    <div class="metric"><div class="label">New contributors</div><div class="value accent">{{comma (len .Delta.NewContributors)}}</div></div>
+    <div class="metric"><div class="label">Departed contributors</div><div class="value">{{comma (len .Delta.DepartedContributors)}}</div></div>
+    <div class="metric"><div class="label">Bus factor</div><div class="value">{{comma .Delta.BusFactorDelta}}</div></div>
+    <div class="metric"><div class="label">Commit delta</div><div class="value">{{if ge .Delta.CommitDelta 0}}+{{end}}{{comma .Delta.CommitDelta}}</div></div>
+  </div>
+  <div class="busfactor-callout"><strong>{{.Delta.BusFactorMsg}}.</strong></div>
+
+  {{if or .Delta.NewContributors .Delta.DepartedContributors}}
+  <div style="margin-top:18px">
+    {{if .Delta.NewContributors}}
+    <div class="delta-section-label">New contributors</div>
+    <table class="hot">
+      <thead><tr><th>Name</th><th>Email</th><th class="num">Commits</th></tr></thead>
+      <tbody>
+        {{range .Delta.NewContributors}}
+        <tr><td>{{.Name}}</td><td class="path">{{.Email}}</td><td class="num">{{comma .Commits}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+    {{if .Delta.DepartedContributors}}
+    <div class="delta-section-label" style="margin-top:14px">Departed contributors</div>
+    <table class="hot">
+      <thead><tr><th>Name</th><th>Email</th><th class="num">Commits</th></tr></thead>
+      <tbody>
+        {{range .Delta.DepartedContributors}}
+        <tr><td>{{.Name}}</td><td class="path">{{.Email}}</td><td class="num">{{comma .Commits}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{if or .Delta.NewHotFiles .Delta.LostHotFiles}}
+  <div style="margin-top:18px">
+    {{if .Delta.NewHotFiles}}
+    <div class="delta-section-label">Hot files only in {{.Delta.TargetRef}}</div>
+    <div class="path-list">
+      {{range .Delta.NewHotFiles}}<span class="path-chip">{{.}}</span>{{end}}
+    </div>
+    {{end}}
+    {{if .Delta.LostHotFiles}}
+    <div class="delta-section-label" style="margin-top:14px">Hot files only in {{.Delta.BaseRef}}</div>
+    <div class="path-list">
+      {{range .Delta.LostHotFiles}}<span class="path-chip">{{.}}</span>{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{if .Delta.LanguageGrowth}}
+  <div style="margin-top:18px">
+    <div class="delta-section-label">Language line deltas (biggest movers)</div>
+    <table class="hot">
+      <thead><tr><th>Extension</th><th class="num">Base</th><th class="num">Target</th><th class="num">Δ</th></tr></thead>
+      <tbody>
+        {{range .Delta.LanguageGrowth}}
+        <tr><td class="path">.{{.Extension}}</td><td class="num">{{comma64 .BaseLines}}</td><td class="num">{{comma64 .TargetLines}}</td><td class="num">{{if ge .Delta 0}}+{{end}}{{comma64 .Delta}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+
+  {{if .RecentAdded}}
+  <div style="margin-top:18px">
+    <div class="delta-section-label">Most recent of {{comma (len .Delta.CommitsAdded)}} commits added</div>
+    {{range .RecentAdded}}
+    <div class="commit-card">
+      <div class="hash">{{shortHash .Hash}}</div>
+      <div class="subject">{{.Subject}}</div>
+      <div class="meta">{{.Author}} &lt;{{.Email}}&gt; · {{.Time.Format "2006-01-02 15:04 MST"}}</div>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</section>
+{{end}}
 
 {{if .HotFiles}}
 <section class="card">
