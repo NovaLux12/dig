@@ -24,6 +24,7 @@ type Report struct {
 	FirstCommit  git.Commit
 	LastCommit   git.Commit
 	TotalCommits int
+	Commits      []git.Commit // all commits in reverse-chronological order
 	Contributors []git.Contributor
 	BusFactor    int
 	BusFactorMsg string
@@ -66,6 +67,7 @@ func Build(
 		FirstCommit:  commits[len(commits)-1], // commits are reverse-chrono
 		LastCommit:   commits[0],
 		TotalCommits: len(commits),
+		Commits:      commits,
 		Contributors: contributors,
 		HotFiles:     hotFiles,
 		Languages:    languages,

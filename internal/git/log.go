@@ -13,14 +13,21 @@ import (
 // pretty-print format and a NUL-byte separator between fields. We avoid
 // `--follow` for renames: detecting renames across history is expensive and
 // the marginal accuracy is not worth it for the "hot files" view.
+//
+// Format detail: we emit a leading %x00 on each commit's format so the
+// NUL sits between this commit's file block and the next commit's hash.
+// Without the leading NUL, the file block would be glued to the next
+// commit's hash (git emits no separator between --name-status and the
+// next commit's format invocation).
 func Commits(repoPath string, opts CommitOpts) ([]Commit, error) {
 	args := []string{
 		"-C", repoPath,
 		"log",
-		// Eight fields per commit, each terminated by NUL:
-		//   hash, authorName, time, parents(space-sep), subject, body,
-		//   committerName, email
-		"--format=%H%x00%an%x00%aI%x00%P%x00%s%x00%b%x00%cn%x00%ae%x00",
+		// Nine NUL-separated tokens per commit: an empty leading token
+		// (the leading %x00), then hash, authorName, time, parents,
+		// subject, body, committerName, email — followed by the file
+		// block (the next token in the NUL-split slice).
+		"--format=%x00%H%x00%an%x00%aI%x00%P%x00%s%x00%b%x00%cn%x00%ae%x00",
 		"--name-status",
 	}
 
@@ -33,7 +40,11 @@ func Commits(repoPath string, opts CommitOpts) ([]Commit, error) {
 	if opts.AllRefs {
 		args = append(args, "--all")
 	} else {
-		args = append(args, "HEAD")
+		ref := opts.Ref
+		if ref == "" {
+			ref = "HEAD"
+		}
+		args = append(args, ref)
 	}
 	if opts.MaxCount > 0 {
 		args = append(args, fmt.Sprintf("--max-count=%d", opts.MaxCount))
@@ -51,32 +62,41 @@ func Commits(repoPath string, opts CommitOpts) ([]Commit, error) {
 }
 
 // parseCommitsWithFiles handles the joined output of
-// `git log --format=...%x00 --name-status`. Per commit, the layout is:
+// `git log --format=...%x00 --name-status`. With the format used by
+// Commits() — a leading %x00 AND a trailing %x00 on the email field —
+// each commit contributes 10 NUL-split tokens:
 //
-//	<hash>\0<author>\0<time>\0<parents>\0<subject>\0<body>\0<committer>\0<email>\0\n\n<name-status block>
+//	"" + hash + authorName + time + parents + subject + body + committerName + email + "" + fileBlock
 //
-// We split the entire output on \0 and regroup into chunks of 8 fields. The
-// final field (email) is followed by a \0 then "\n\n" then the name-status
-// block. We attach that block to the same commit; the next chunk starts the
-// next commit's record.
+// The empty leading token comes from the format's leading %x00; the empty
+// 9th token comes from the format's trailing %x00. Together they put a NUL
+// boundary on *both* sides of the file block, so the file block is always
+// its own token, never glued to the next commit's hash.
+//
+// We strip the leading empty token, then iterate in chunks of 9 (8 fields +
+// 1 file block).
 func parseCommitsWithFiles(out string) ([]Commit, error) {
 	if out == "" {
 		return nil, nil
 	}
-	// Trim the trailing newline git always emits.
 	out = strings.TrimRight(out, "\n")
 
 	parts := strings.Split(out, "\x00")
-	if len(parts) < 8 {
+	if len(parts) < 9 {
+		return nil, nil
+	}
+	// Drop the leading empty token from the format's leading %x00.
+	if parts[0] == "" {
+		parts = parts[1:]
+	}
+	if len(parts) < 9 {
 		return nil, nil
 	}
 
+	const partsPerCommit = 9 // 8 fields + 1 file block
+
 	var commits []Commit
-	// parts has 8 fields per commit plus 1 trailing fragment (the name-status
-	// block + "\n" + the next record's hash...). We iterate in groups of 8
-	// and consume the next non-empty fragment as the file block for that
-	// commit. The trailing fragment of the last commit may be empty.
-	for i := 0; i+8 <= len(parts); i += 8 {
+	for i := 0; i+partsPerCommit <= len(parts); i += partsPerCommit {
 		hash := parts[i+0]
 		author := parts[i+1]
 		timeStr := parts[i+2]
@@ -87,7 +107,6 @@ func parseCommitsWithFiles(out string) ([]Commit, error) {
 		_ = committer
 		email := parts[i+7]
 
-		// Parse time.
 		t, err := time.Parse(gitTimeLayout, timeStr)
 		if err != nil {
 			return nil, fmt.Errorf("parse time %q at index %d: %w", timeStr, i, err)
@@ -98,16 +117,7 @@ func parseCommitsWithFiles(out string) ([]Commit, error) {
 			parents = strings.Split(parentsStr, " ")
 		}
 
-		// The next fragment (parts[i+8]) is the name-status block for this
-		// commit. It begins with a literal "\n\n" then "A\tpath\nM\tpath\n...".
-		// If this is the last commit, parts[i+8] may not exist; treat as empty.
-		var fileLines []string
-		if i+8 < len(parts) {
-			fileLines = extractNameStatusLines(parts[i+8])
-		}
-		// The file block for the next commit starts at parts[i+9]; we just
-		// continue the loop and re-process. The file block always sits
-		// *between* commit records because of the %x00 terminator on email.
+		fileLines := extractNameStatusLines(parts[i+8])
 
 		c := Commit{
 			Hash:    hash,

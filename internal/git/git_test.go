@@ -108,6 +108,20 @@ func TestCommits_RoundTrip(t *testing.T) {
 	if len(cs[0].Files) == 0 {
 		t.Errorf("expected file touches on latest commit")
 	}
+	// Regression: every commit (not just the latest) must have its
+	// correct subject and hash. A previous parser bug glued each commit's
+	// file block to the next commit's hash, scrambling subjects for all
+	// commits after the first.
+	wantSubjects := []string{"extend util", "add line", "init"}
+	wantHashes := []int{40, 40, 40} // full SHA length
+	for i, c := range cs {
+		if c.Subject != wantSubjects[i] {
+			t.Errorf("commit %d subject: want %q, got %q", i, wantSubjects[i], c.Subject)
+		}
+		if len(c.Hash) != wantHashes[i] {
+			t.Errorf("commit %d hash: want %d chars, got %d (%q)", i, wantHashes[i], len(c.Hash), c.Hash)
+		}
+	}
 }
 
 func TestCommits_Since(t *testing.T) {
