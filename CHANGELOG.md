@@ -23,3 +23,8 @@ $ go install github.com/NovaLux12/dig@latest
 $ dig ../your-repo --out report.html
 $ open report.html
 ```
+## Releases
+
+- **v0.1.0** — `https://github.com/NovaLux12/dig/releases/tag/v0.1.0` —
+  cross-platform binaries (linux/darwin/windows, amd64/arm64) plus
+  SHA256SUMS. Source install: `go install github.com/NovaLux12/dig@v0.1.0`.
