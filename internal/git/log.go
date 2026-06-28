@@ -32,10 +32,14 @@ func Commits(repoPath string, opts CommitOpts) ([]Commit, error) {
 	}
 
 	if !opts.Since.IsZero() {
-		args = append(args, fmt.Sprintf("--since=%s", opts.Since.UTC().Format("2006-01-02T15:04:05")))
+		// Include the Z so git doesn't interpret the bare wall-clock
+		// time as the local-time-of-the-host-running-dig. The time IS
+		// already converted to UTC at opts.Since.UTC(); without the Z
+		// in the format string the resulting argument is ambiguous.
+		args = append(args, fmt.Sprintf("--since=%s", opts.Since.UTC().Format("2006-01-02T15:04:05Z")))
 	}
 	if !opts.Until.IsZero() {
-		args = append(args, fmt.Sprintf("--until=%s", opts.Until.UTC().Format("2006-01-02T15:04:05")))
+		args = append(args, fmt.Sprintf("--until=%s", opts.Until.UTC().Format("2006-01-02T15:04:05Z")))
 	}
 	if opts.AllRefs {
 		args = append(args, "--all")
