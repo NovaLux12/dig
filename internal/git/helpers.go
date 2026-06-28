@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 )
 
 // ShowCommit returns the full Commit record (including file touches) for a
@@ -37,12 +36,32 @@ func ShowCommit(repoPath, hash string) (Commit, error) {
 	return cs[0], nil
 }
 
-// FilesAtHEAD returns the list of files tracked in HEAD, in repository order
-// (which is alphabetical by git). Used for the languages histogram.
+// FilesAtHEAD returns the list of files tracked in the named ref, sorted
+// alphabetically. Used by the languages histogram in the single-ref
+// report. For --base compare mode, use FilesAtRef(repoPath, baseRef)
+// so the comparison is between the base ref's tree and HEAD's tree
+// rather than between two HEAD reads.
+//
+// FilesAtHEAD reads the *committed* tree of HEAD via `git ls-tree`, not
+// the user's working tree. It only matches the working tree when there
+// are no uncommitted edits; LinesByFile is the function that actually
+// touches the working tree (it reads bytes off disk).
 func FilesAtHEAD(repoPath string) ([]string, error) {
-	out, err := run(repoPath, "-C", repoPath, "ls-tree", "-r", "--name-only", "HEAD")
+	return FilesAtRef(repoPath, "HEAD")
+}
+
+// FilesAtRef returns the list of files tracked in the given ref, sorted
+// alphabetically by name. Used by the languages histogram in both the
+// single-ref report (ref=HEAD) and the --base compare mode (ref=baseRef).
+// Reading from the ref's tree means the result is independent of any
+// uncommitted working-tree edits the user has in progress.
+func FilesAtRef(repoPath, ref string) ([]string, error) {
+	if ref == "" {
+		ref = "HEAD"
+	}
+	out, err := run(repoPath, "-C", repoPath, "ls-tree", "-r", "--name-only", ref)
 	if err != nil {
-		return nil, fmt.Errorf("git ls-tree HEAD: %w", err)
+		return nil, fmt.Errorf("git ls-tree %s: %w", ref, err)
 	}
 	lines := strings.Split(out, "\n")
 	var files []string
@@ -292,10 +311,31 @@ func AggregateLanguages(files []string, linesByFile map[string]int64, topN int) 
 	return out
 }
 
-// LinesByFile reads file line counts on demand. Same skipping rules as
-// TotalLineCount; returns a map path -> lines.
+// LinesByFile reads file line counts on demand, reading from the working
+// tree (the user's local disk). This is the "what's actually on my
+// machine right now" view, which is what the single-ref report wants
+// but is NOT what --base compare mode wants.
+//
+// Deprecated for compare mode: LinesByFile touches disk and reads
+// whatever happens to be in the user's working tree, so a --base
+// comparison would be between uncommitted working-tree bytes and
+// themselves, not between the base ref's tree and HEAD's. Use
+// LinesByFileAtRef(repoPath, baseRef) in the --base branch.
 func LinesByFile(repoPath string) (map[string]int64, error) {
-	files, err := FilesAtHEAD(repoPath)
+	return LinesByFileAtRef(repoPath, "HEAD")
+}
+
+// LinesByFileAtRef reads line counts for every file tracked in the given
+// ref, by reading each blob via `git cat-file blob <oid>`. This makes
+// the result independent of the user's working tree, so --base compare
+// mode compares the base ref's tree to HEAD's tree rather than the
+// working tree to itself. Binary files (per isBinaryExt) are skipped
+// and reported as 0 lines, matching the working-tree semantics.
+func LinesByFileAtRef(repoPath, ref string) (map[string]int64, error) {
+	if ref == "" {
+		ref = "HEAD"
+	}
+	files, err := FilesAtRef(repoPath, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -305,16 +345,29 @@ func LinesByFile(repoPath string) (map[string]int64, error) {
 			out[rel] = 0
 			continue
 		}
-		abs := filepath.Join(repoPath, rel)
-		data, err := os.ReadFile(abs)
+		oid, err := run(repoPath, "-C", repoPath, "ls-tree", ref, "--", rel)
 		if err != nil {
 			out[rel] = 0
 			continue
 		}
-		out[rel] = int64(countLines(data))
+		// `git ls-tree <ref> -- <path>` emits one line per matching
+		// entry: "<mode> <type> <oid>\t<path>". For a tracked blob the
+		// type is "blob" and the OID is what we want. Skip anything
+		// that doesn't look like a regular blob (e.g. submodules, which
+		// git reports as type "commit").
+		fields := strings.Fields(oid)
+		if len(fields) < 3 || fields[1] != "blob" {
+			out[rel] = 0
+			continue
+		}
+		oid = fields[2]
+		data, err := run(repoPath, "-C", repoPath, "cat-file", "blob", oid)
+		if err != nil {
+			out[rel] = 0
+			continue
+		}
+		out[rel] = int64(countLines([]byte(data)))
 	}
 	return out, nil
 }
 
-// ensure time import retained if helpers change later.
-var _ = time.Time{}

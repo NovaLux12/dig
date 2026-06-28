@@ -123,8 +123,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitIO
 	}
 	if len(commits) == 0 {
-		fmt.Fprintf(stderr, "dig: repository has no commits\n")
-		return exitNotARepo
+		// Two distinct failure modes collapse to len==0 here:
+		//   1. The repository is truly empty (no commits at all).
+		//   2. The repository has commits, but --since filtered them all out.
+		// Branch on whether --since was actually set so each gets its
+		// own exit code and message. exitNotARepo is right for (1);
+		// exitUsage is right for (2) — a "your filter excluded
+		// everything" condition is a user error, not a path error.
+		if since.IsZero() {
+			fmt.Fprintf(stderr, "dig: repository has no commits\n")
+			return exitNotARepo
+		}
+		fmt.Fprintf(stderr, "dig: no commits match --since=%s (try an earlier date or drop --since)\n",
+			since.UTC().Format("2006-01-02T15:04:05Z"))
+		return exitUsage
 	}
 
 	contributors := git.AggregateContributors(commits)
@@ -174,12 +186,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		baseContributors := git.AggregateContributors(baseCommits)
 		baseHotFiles := git.AggregateHotFiles(baseCommits, 25)
-		baseFilesAtHEAD, err := git.FilesAtHEAD(abs)
+		// Use the ref-parameterised variants so the comparison reads
+		// the base ref's tree (commits AND file content), not the
+		// user's working tree. Without this the language section and
+		// the file-count metric would be derived from uncommitted
+		// edits versus themselves, not from baseRef versus HEAD.
+		baseFilesAtHEAD, err := git.FilesAtRef(abs, baseRef)
 		if err != nil {
 			fmt.Fprintf(stderr, "dig: list files at base: %v\n", err)
 			return exitIO
 		}
-		baseLinesByFile, err := git.LinesByFile(abs)
+		baseLinesByFile, err := git.LinesByFileAtRef(abs, baseRef)
 		if err != nil {
 			fmt.Fprintf(stderr, "dig: line counts at base: %v (continuing with partial data)\n", err)
 			baseLinesByFile = map[string]int64{}
