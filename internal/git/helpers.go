@@ -370,4 +370,3 @@ func LinesByFileAtRef(repoPath, ref string) (map[string]int64, error) {
 	}
 	return out, nil
 }
-
