@@ -66,29 +66,29 @@ func RenderJSON(r *analyze.Report, d *analyze.Delta) ([]byte, error) {
 }
 
 type jsonReport struct {
-	RepoName         string           `json:"repoName"`
-	RepoPath         string           `json:"repoPath"`
-	Accent           string           `json:"accent"`
-	GeneratedAt      string           `json:"generatedAt"`
-	TotalCommits     int              `json:"totalCommits"`
-	ContributorCount int              `json:"contributorCount"`
-	FileCount        int              `json:"fileCount"`
-	FirstAt          string           `json:"firstAt"`
-	LastAt           string           `json:"lastAt"`
-	BusFactor        int              `json:"busFactor"`
-	BusFactorMsg     string           `json:"busFactorMsg"`
-	Months           int              `json:"months"`
-	TimelineTotal    int              `json:"timelineTotal"`
-	PeakLabel        string           `json:"peakLabel"`
-	PeakCommits      int              `json:"peakCommits"`
-	Timeline         []jsonMonth      `json:"timeline"`
+	RepoName         string            `json:"repoName"`
+	RepoPath         string            `json:"repoPath"`
+	Accent           string            `json:"accent"`
+	GeneratedAt      string            `json:"generatedAt"`
+	TotalCommits     int               `json:"totalCommits"`
+	ContributorCount int               `json:"contributorCount"`
+	FileCount        int               `json:"fileCount"`
+	FirstAt          string            `json:"firstAt"`
+	LastAt           string            `json:"lastAt"`
+	BusFactor        int               `json:"busFactor"`
+	BusFactorMsg     string            `json:"busFactorMsg"`
+	Months           int               `json:"months"`
+	TimelineTotal    int               `json:"timelineTotal"`
+	PeakLabel        string            `json:"peakLabel"`
+	PeakCommits      int               `json:"peakCommits"`
+	Timeline         []jsonMonth       `json:"timeline"`
 	Contributors     []jsonContributor `json:"contributors"`
-	HotFiles         []jsonHotFile    `json:"hotFiles"`
-	Languages        []jsonLang       `json:"languages"`
-	FirstCommit      jsonCommit       `json:"firstCommit"`
-	LastCommit       jsonCommit       `json:"lastCommit"`
-	Readme           string           `json:"readme"`
-	Delta            *jsonDelta       `json:"delta,omitempty"`
+	HotFiles         []jsonHotFile     `json:"hotFiles"`
+	Languages        []jsonLang        `json:"languages"`
+	FirstCommit      jsonCommit        `json:"firstCommit"`
+	LastCommit       jsonCommit        `json:"lastCommit"`
+	Readme           string            `json:"readme"`
+	Delta            *jsonDelta        `json:"delta,omitempty"`
 }
 
 type jsonMonth struct {
@@ -137,19 +137,19 @@ type jsonFileTouch struct {
 }
 
 type jsonDelta struct {
-	BaseRef              string             `json:"baseRef"`
-	TargetRef            string             `json:"targetRef"`
-	CommitDelta          int                `json:"commitDelta"`
-	ContribDelta         int                `json:"contribDelta"`
-	BusFactorDelta       int                `json:"busFactorDelta"`
-	BusFactorMsg         string             `json:"busFactorMsg"`
-	CommitsAdded         []jsonCommit       `json:"commitsAdded"`
-	CommitsRemoved       []jsonCommit       `json:"commitsRemoved"`
-	NewContributors      []jsonContributor  `json:"newContributors"`
-	DepartedContributors []jsonContributor  `json:"departedContributors"`
-	NewHotFiles          []string           `json:"newHotFiles"`
-	LostHotFiles         []string           `json:"lostHotFiles"`
-	LanguageGrowth       []jsonLangGrowth   `json:"languageGrowth"`
+	BaseRef              string            `json:"baseRef"`
+	TargetRef            string            `json:"targetRef"`
+	CommitDelta          int               `json:"commitDelta"`
+	ContribDelta         int               `json:"contribDelta"`
+	BusFactorDelta       int               `json:"busFactorDelta"`
+	BusFactorMsg         string            `json:"busFactorMsg"`
+	CommitsAdded         []jsonCommit      `json:"commitsAdded"`
+	CommitsRemoved       []jsonCommit      `json:"commitsRemoved"`
+	NewContributors      []jsonContributor `json:"newContributors"`
+	DepartedContributors []jsonContributor `json:"departedContributors"`
+	NewHotFiles          []string          `json:"newHotFiles"`
+	LostHotFiles         []string          `json:"lostHotFiles"`
+	LanguageGrowth       []jsonLangGrowth  `json:"languageGrowth"`
 }
 
 type jsonLangGrowth struct {
