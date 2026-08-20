@@ -67,6 +67,9 @@ dig --out report.html <repo-path>           # custom output path
 dig --accent #ff5577 <repo-path>            # custom accent colour
 dig --since 12mo <repo-path>                # restrict analysis window
 dig --base v1.0 <repo-path>                 # compare against a ref; emit a delta report
+dig --json report.json <repo-path>          # also emit machine-readable JSON
+dig --top 10 <repo-path>                    # show only top 10 hot files
+dig --json report.json --top 5 <repo-path>  # JSON keeps full data; HTML is truncated
 dig --help
 ```
 

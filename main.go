@@ -53,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		sinceStr string
 		allRefs  bool
 		baseRef  string
+		jsonPath string
+		topN     int
 		showVer  bool
 		showHelp bool
 	)
@@ -61,6 +63,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&sinceStr, "since", "", "restrict analysis to commits after this time (e.g. 12mo, 2024-01-01)")
 	fs.BoolVar(&allRefs, "all", false, "walk all refs (branches and tags) instead of just HEAD")
 	fs.StringVar(&baseRef, "base", "", "compare against this ref (branch, tag, or SHA prefix). Emits a delta report. Empty = no compare.")
+	fs.StringVar(&jsonPath, "json", "", "also write machine-readable JSON report to this file (e.g. report.json)")
+	fs.IntVar(&topN, "top", 0, "limit hot files displayed (0 = all, default 25)")
 	fs.BoolVar(&showVer, "version", false, "print version and exit")
 	fs.BoolVar(&showHelp, "help", false, "show usage")
 
@@ -69,7 +73,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "Usage:\n  dig <repo-path> [flags]\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprintf(stderr, "\nExit codes:\n  %d success\n  %d not a git repo\n  %d git not installed\n  %d I/O error\n", exitOK, exitNotARepo, exitGitNotInstalled, exitIO)
-		fmt.Fprintf(stderr, "\nExamples:\n  dig ../my-repo\n  dig --base v1.0 --out since-v1.html ../my-repo\n  dig --since 12mo ../my-repo\n")
+		fmt.Fprintf(stderr, "\nExamples:\n  dig ../my-repo\n  dig --base v1.0 --out since-v1.html ../my-repo\n  dig --since 12mo ../my-repo\n  dig --json report.json --top 10 ../my-repo\n")
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -98,6 +102,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitIO
 	}
 
+	if topN < 0 {
+		fmt.Fprintf(stderr, "dig: invalid --top %d: must be >= 0\n", topN)
+		return exitUsage
+	}
+
 	if err := git.Available(); err != nil {
 		fmt.Fprintf(stderr, "dig: %v\n", err)
 		return exitGitNotInstalled
@@ -106,7 +115,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "dig: %q is not a git repository\n", repoPath)
 		return exitNotARepo
 	}
-
 	since, err := parseSince(sinceStr)
 	if err != nil {
 		fmt.Fprintf(stderr, "dig: invalid --since: %v\n", err)
@@ -211,7 +219,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		delta = analyze.Compare(baseReport, r, baseRef, "HEAD")
 	}
 
-	html, err := report.Render(r, delta)
+	// Apply --top limit for HTML rendering only; JSON keeps full data.
+	renderR := r
+	if topN > 0 && len(r.HotFiles) > topN {
+		cp := *r
+		cp.HotFiles = append([]git.FileStat(nil), r.HotFiles[:topN]...)
+		renderR = &cp
+	}
+
+	html, err := report.Render(renderR, delta)
 	if err != nil {
 		fmt.Fprintf(stderr, "dig: render: %v\n", err)
 		return exitIO
@@ -222,6 +238,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitIO
 	}
 	fmt.Fprintf(stdout, "wrote %s (%s bytes)\n", outPath, comma(int64(len(html))))
+
+	if jsonPath != "" {
+		jb, err := report.RenderJSON(r, delta)
+		if err != nil {
+			fmt.Fprintf(stderr, "dig: render json: %v\n", err)
+			return exitIO
+		}
+		if err := os.WriteFile(jsonPath, jb, 0o644); err != nil {
+			fmt.Fprintf(stderr, "dig: write %s: %v\n", jsonPath, err)
+			return exitIO
+		}
+		fmt.Fprintf(stdout, "wrote %s (%s bytes)\n", jsonPath, comma(int64(len(jb))))
+	}
 	return exitOK
 }
 
