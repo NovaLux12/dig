@@ -1,5 +1,7 @@
 # dig
 
+[![CI](https://github.com/NovaLux12/dig/actions/workflows/ci.yml/badge.svg)](https://github.com/NovaLux12/dig/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/NovaLux12/dig)](https://github.com/NovaLux12/dig/releases) [![Go version](https://img.shields.io/github/go-mod/go-version/NovaLux12/dig)](https://go.dev/) [![License: MIT](https://img.shields.io/github/license/NovaLux12/dig)](LICENSE)
+
 🔍 A single static Go binary that turns any git repository into a self-contained
 HTML code-archaeology report.
 
