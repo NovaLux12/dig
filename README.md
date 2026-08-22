@@ -48,6 +48,8 @@ A single `report.html` containing:
 
 ## Install
 
+- **Pre-built binaries**: download from [releases](https://github.com/NovaLux12/dig/releases/latest) — linux/amd64+arm64, darwin/amd64+arm64, windows/amd64 (+SHA256SUMS)
+
 ```sh
 go install github.com/NovaLux12/dig@latest
 ```
