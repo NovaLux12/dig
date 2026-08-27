@@ -61,7 +61,7 @@ git clone https://github.com/NovaLux12/dig
 cd dig && go build -o dig .
 ```
 
-Requires Go 1.26+ and a `git` binary on `$PATH`.
+Requires Go 1.22+ (see `go.mod`) and a `git` binary on `$PATH`.
 
 ## Usage
 
@@ -74,6 +74,8 @@ dig --base v1.0 <repo-path>                 # compare against a ref; emit a delt
 dig --json report.json <repo-path>          # also emit machine-readable JSON
 dig --top 10 <repo-path>                    # show only top 10 hot files
 dig --json report.json --top 5 <repo-path>  # JSON keeps full data; HTML is truncated
+dig --all <repo-path>                       # walk all refs (branches and tags), not just HEAD
+dig --version
 dig --help
 ```
 
