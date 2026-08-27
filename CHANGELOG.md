@@ -1,5 +1,58 @@
 # Changelog
 
+## v0.3.2 — 2026-08-27
+
+### Bug fix
+
+- **Release binaries now report their version.** `main.go` declares a
+  `version` variable that is meant to be overridden via `-ldflags` at
+  release time, but the release workflow never passed any `-ldflags`,
+  so every released binary printed `dig dev` for `--version`. The
+  release build now injects the tag name (`-X main.version=<tag>`) and
+  strips symbol tables (`-s -w`) for smaller binaries. Released
+  binaries additionally pick up the `docs: advertise pre-built release
+  binaries` README change that landed after v0.3.1.
+
+### Documentation
+
+- README usage block now lists the `--all` and `--version` flags,
+  which `--help` already advertised.
+- Corrected the minimum Go version in the README (1.22, matching
+  `go.mod`) — the previous text still said 1.26 after the go.mod
+  alignment in v0.3.1.
+
+## v0.3.1 — 2026-08-22
+
+### Maintenance
+
+- README badges (CI, release, Go version, licence) and `go.mod`
+  aligned back to the fleet Go 1.22 convention (PR #2). The CI and
+  release workflows stay on Go 1.26, matching the current toolchain.
+- Install section now advertises the pre-built release binaries.
+
+## v0.3.0 — 2026-08-20
+
+### Feature
+
+- **`--json <file>` and `--top <n>` flags.** `--json` writes a
+  machine-readable JSON report alongside the HTML; `--top <n>` limits
+  the hot-files table displayed in the HTML (default 25, `0` = all).
+  The JSON always contains the full untruncated data, so
+  `dig --json report.json --top 5 <repo-path>` gives a clipped HTML
+  view and a complete JSON export.
+
+### Fix
+
+- gofmt cleanup in `internal/report/json.go` (CI formatting check).
+
+No third-party dependencies added. Stdlib only.
+
+```
+$ dig --json report.json --top 10 ../my-repo
+wrote report.html (xx,xxx bytes)
+wrote report.json (x,xxx bytes)
+```
+
 ## v0.2.0 — 2026-06-27
 
 ### Feature
