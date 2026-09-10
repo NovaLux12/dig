@@ -61,7 +61,7 @@ git clone https://github.com/NovaLux12/dig
 cd dig && go build -o dig .
 ```
 
-Requires Go 1.22+ (see `go.mod`) and a `git` binary on `$PATH`.
+Requires Go 1.26+ (see `go.mod`) and a `git` binary on `$PATH`.
 
 ## Usage
 
