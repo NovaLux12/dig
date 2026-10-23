@@ -86,6 +86,9 @@ dig --version
 dig --help
 ```
 
+`dig` is read-only. It never modifies, stages, or commits anything in the
+target repo.
+
 ### Data limits
 
 Two lists are truncated at collection time, before the HTML or the JSON is
@@ -102,9 +105,6 @@ written:
 files. The JSON output carries the same capped lists — it is **not** the full
 hot-file or language history. The rest of the JSON (commits, contributors,
 timeline, per-commit file lists) is complete for the analysed window.
-
-`dig` is read-only. It never modifies, stages, or commits anything in the
-target repo.
 
 ### Compare mode
 
